@@ -202,3 +202,7 @@ main{display:block;max-width:none;padding:0;margin:0}
 @media(max-width:1000px){.garden-heading::after{right:-8px}}
 @media(min-width:541px) and (max-width:650px){.garden-heading::after{right:-5px}}
 @media(max-width:540px){.garden-heading::after{top:0;bottom:auto;left:0;right:0;width:100%;height:1px;background:linear-gradient(to right,transparent,#8d987c45 20%,#8d987c45 80%,transparent)}}
+
+/* The tiny inline poster paints before scripts or video resources finish. */
+.garden .flower-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(var(--preview-scale,1.152));pointer-events:none}
+.flower-preview[hidden]{display:none}
