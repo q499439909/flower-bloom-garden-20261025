@@ -1,6 +1,6 @@
 import {launchCamera} from './camera-launch.js';
-import {createVisionClient} from './vision-client.js';
-import {createSequenceCache} from './sequence-cache.js';
+import {createVisionClient} from './vision-client.js?v=sequence2';
+import {createVideoSequence} from './video-sequence.js';
 import {pinchRatio,drawTracking} from './tracking.js';
 import {createSwipeDetector,isOpenPalm} from './swipe.js';
 import {createHandRoleTracker} from './hand-roles.js';
@@ -8,15 +8,16 @@ const $=id=>document.getElementById(id);
 const canvas=$('flower'),ctx=canvas.getContext('2d'),video=$('video'),overlay=$('tracking');
 const clamp=v=>Math.max(0,Math.min(1,v));
 const flowers=[
- {name:'锦绣年华',latin:'Blooming Splendor',blessing:['一朵牡丹，盛开满怀锦绣，','一程岁月，珍藏所有温柔。','愿你所行皆坦途，所遇皆美好，','岁岁欢喜，年年花开。'],keywords:'圆满 · 繁盛',displayScale:1.44,path:'peony-full-display',accent:'#e4b4bd',count:169,digits:4,width:1112,height:834},
- {name:'暖阳予你',latin:'A Little Sunshine',blessing:['采一束阳光，藏进金色花瓣，','把温暖与欢喜，轻轻送到你身旁。','愿你眼里常有光，心中常有暖，','一路明媚，自在芬芳。'],keywords:'温暖 · 陪伴',displayScale:1.44,path:'rose-full-display',accent:'#e9cb79',count:169,digits:5,width:1112,height:834},
- {name:'春日来信',latin:'Letters from Spring',blessing:['春风寄来一封信，','写满温柔与新生。','愿所有美好如约而至，','所有期待次第花开。'],keywords:'希望 · 新启',displayScale:1,path:'spring-letter-display',accent:'#c7bcdf',count:95,digits:5,width:834,height:1112}
+ {name:'锦绣年华',latin:'Blooming Splendor',blessing:['一朵牡丹，盛开满怀锦绣，','一程岁月，珍藏所有温柔。','愿你所行皆坦途，所遇皆美好，','岁岁欢喜，年年花开。'],keywords:'圆满 · 繁盛',video:'assets/video/peony.mp4',displayScale:1.44,path:'peony-full-display',accent:'#e4b4bd',count:169,digits:4,width:1112,height:834},
+ {name:'暖阳予你',latin:'A Little Sunshine',blessing:['采一束阳光，藏进金色花瓣，','把温暖与欢喜，轻轻送到你身旁。','愿你眼里常有光，心中常有暖，','一路明媚，自在芬芳。'],keywords:'温暖 · 陪伴',video:'assets/video/rose.mp4',displayScale:1.44,path:'rose-full-display',accent:'#e9cb79',count:169,digits:5,width:1112,height:834},
+ {name:'春日来信',latin:'Letters from Spring',blessing:['春风寄来一封信，','写满温柔与新生。','愿所有美好如约而至，','所有期待次第花开。'],keywords:'希望 · 新启',video:'assets/video/spring-letter.mp4',displayScale:1,path:'spring-letter-display',accent:'#c7bcdf',count:95,digits:5,width:834,height:1112}
 ];
 let selected=0,target=0,current=0,shown=-1,mode='hand';
 let stream=null,active=false,starting=false,manual=false,raw=null,lastSeen=0;
 let lastVideo=-1,lastDetect=0,busy=false,visionClient=null,processingVision=false,visionEpoch=0;
 const defaults={hand:[.08,1.2],smile:[.08,.65]},ranges={hand:[...defaults.hand],smile:[...defaults.smile]};
 const swipe=createSwipeDetector(),handRoles=createHandRoleTracker();
+const sequences=new Map();let sequence=null;
 const transitionCanvas=$('flower-transition'),transitionCtx=transitionCanvas.getContext('2d');
 let transitionPending=false,transitionStarted=null,transitionOpacity=0,playback=null,calibrationClosed=null,faceSeen=false;
 function containDraw(context,source,width,height){
@@ -31,7 +32,7 @@ function snapshotFlower(){
  transitionCanvas.width=snapshot.width;transitionCanvas.height=snapshot.height;transitionCtx.drawImage(snapshot,0,0);
  transitionCanvas.hidden=false;transitionCanvas.style.opacity='1';transitionOpacity=1;transitionPending=true;transitionStarted=null;
 }
-function resumeInteraction(){playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('resume').hidden=true;$('home-play').textContent='播放花开 ▷';}
+function resumeInteraction(){sequence?.pause();playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('resume').hidden=true;$('home-play').textContent='播放花开 ▷';}
 function updateModeBusy(){
  for(const id of ['hand','smile','home-hand','home-smile'])$(id).disabled=busy||starting;
 }
@@ -40,14 +41,18 @@ function syncHomeStatus(){
  setText('home-switch-state',$('role-switch').textContent.replace(/^[①②] /,'').replace('已锁定','已识别'));
  $('home-camera').hidden=active||starting;
  if(starting||busy)setText('home-swipe-title','正在准备'+(mode==='hand'?'手势':'微笑')+'识别…');
- if(playback){setText('home-swipe-title',playback.finished?'花已盛放 · 点击恢复互动':'正在播放花开…');$('home-recognition').dataset.state='playing';}
+ if(playback){setText('home-swipe-title',playback.finished?'花已盛放 · 点击恢复互动':sequence?.buffering?'正在缓冲花开画面…':'正在播放完整花开…');$('home-recognition').dataset.state='playing';}
 }
 
 function status(text){const notice=$('status');notice.textContent=text;notice.hidden=!/失败|无法启动|未找到摄像头|请在浏览器|请先开启|识别暂时|已记录|两个状态|已恢复默认|分工已重置/.test(text);}
 function selectFlower(index){
  const next=(index+flowers.length)%flowers.length;if(next===selected&&shown!==-1)return;
- if(shown!==-1)snapshotFlower();selected=next;shown=-1;
- const f=flowers[selected];canvas.width=f.width;canvas.height=Math.ceil(f.height*Math.max(1,.8*f.displayScale));document.documentElement.style.setProperty('--flower-accent',f.accent);
+ if(shown!==-1)snapshotFlower();
+ sequence?.pause();if(playback)resumeInteraction();selected=next;shown=-1;
+ const f=flowers[selected];
+ if(!sequences.has(selected))sequences.set(selected,createVideoSequence({url:f.video,count:f.count,onError:error=>status(error.message)}));
+ sequence=sequences.get(selected);
+ canvas.width=f.width;canvas.height=Math.ceil(f.height*Math.max(1,.8*f.displayScale));document.documentElement.style.setProperty('--flower-accent',f.accent);
  $('letter-name').textContent=f.name;$('letter-english').textContent=f.latin;
  $('letter-blessing').replaceChildren(...f.blessing.map(line=>{const p=document.createElement('p');p.textContent=line;return p;}));
  $('letter-keywords').textContent='关键词：'+f.keywords;
@@ -58,29 +63,22 @@ function selectFlower(index){
 flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
-const frameUrl=(flower,index)=>`assets/${flower.path}/frame_${String(index+1).padStart(flower.digits,'0')}.jpg`;
-const frameCache=createSequenceCache({onError:()=>{status('部分花朵图片加载失败，请刷新页面重试。');}});
-// Prime every flower so a switch can immediately display a cached frame.
-frameCache.request(flowers.flatMap(f=>[0,1,f.count-1].map(n=>frameUrl(f,n))));
-let lastRequestKey='',lastPercent=-1;
+let lastPercent=-1;
 function animate(now=performance.now()){
- if(playback&&!playback.finished){const progress=clamp((now-playback.start)/6000);target=progress*progress*(3-2*progress);if(progress===1){playback.finished=true;target=1;syncHomeStatus();}}
- current+=(target-current)*.16;if(Math.abs(target-current)<.001)current=target;
+ if(playback&&!playback.finished){
+  current=target=sequence.position;
+  if(sequence.ended){playback.finished=true;current=target=1;}
+  syncHomeStatus();
+ }else{current+=(target-current)*.16;if(Math.abs(target-current)<.001)current=target;}
  const flower=flowers[selected],n=Math.round(clamp(current)*(flower.count-1));
- const nearby=[n];for(let d=1;d<=6;d++){if(n+d<flower.count)nearby.push(n+d);if(n-d>=0)nearby.push(n-d);}
- const requestKey=`${selected}:${n}`;
- if(requestKey!==lastRequestKey||!frameCache.get(frameUrl(flower,n))){frameCache.request(nearby.map(i=>frameUrl(flower,i)));lastRequestKey=requestKey;}
- let image=null,renderIndex=n;
- for(let d=0;d<(transitionPending?1:flower.count)&&!image;d++)for(const i of d===0?[n]:[n-d,n+d]){
-  if(i<0||i>=flower.count)continue;
-  const cached=frameCache.get(frameUrl(flower,i));if(cached){image=cached;renderIndex=i;break;}
- }
- $('loading').hidden=!!image||!transitionCanvas.hidden;
- if(image&&renderIndex!==shown){
+ const frame=sequence.frame;
+ $('loading').hidden=!!frame||!transitionCanvas.hidden;
+ if(frame&&frame.index!==shown){
   if(transitionPending){transitionPending=false;transitionStarted=now;}
-  shown=renderIndex;const scale=.8*flower.displayScale,width=flower.width*scale,height=flower.height*scale;
-  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
+  shown=frame.index;const scale=.8*flower.displayScale,width=flower.width*scale,height=flower.height*scale;
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(frame.source,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
  }
+ if(!playback||playback.finished)sequence.seek(n);
  if(transitionStarted!==null){
   const progress=matchMedia('(prefers-reduced-motion: reduce)').matches?1:clamp((now-transitionStarted)/650);
   transitionOpacity=1-progress*progress*(3-2*progress);transitionCanvas.style.opacity=String(transitionOpacity);
@@ -94,7 +92,7 @@ function animate(now=performance.now()){
  requestAnimationFrame(animate);
 }animate();
 async function modelForMode(){
- if(!visionClient)visionClient=createVisionClient();
+ if(!visionClient)visionClient=createVisionClient({onProgress:message=>{if(starting||busy){setText('home-swipe-title',message);if(starting)$('camera-allow').textContent=message;}}});
  await visionClient.request('init',{mode});
 }
 function clearTracking(){drawTracking(overlay,null,mode,video.videoWidth||640,video.videoHeight||480);$('tracking-value').textContent='';}
@@ -240,10 +238,11 @@ for(const [id,index] of [['closed',0],['opened',1]])$(id).onclick=()=>{
  ranges[mode]=next;status(index===0?'已记录合拢状态，再做盛开动作并点击「设为盛开」。':'已记录盛开状态，试试现在的开花效果。');
 };
 $('reset').onclick=()=>{ranges[mode]=[...defaults[mode]];status('当前模式已恢复默认灵敏度。');};
-$('home-play').onclick=()=>{
+$('home-play').onclick=async()=>{
  if(playback){resumeInteraction();showSwipeGuide({state:active?(mode==='hand'?'first':'waiting'):'off',progress:0});return;}
- manual=false;$('resume').hidden=true;swipe.reset();current=0;target=0;playback={start:performance.now(),finished:false};
+ manual=false;$('resume').hidden=true;swipe.reset();current=0;target=0;const session=playback={finished:false};
  $('home-play').textContent='恢复互动 ↗';syncHomeStatus();
+ try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setText('home-swipe-title',error.message);}
 };
 $('home-calibrate').onclick=()=>{
  resumeInteraction();calibrationClosed=null;$('home-opened').disabled=true;
