@@ -12,7 +12,10 @@
     main { width: min(100% - 32px, 440px); margin: 0 auto; padding: 28px 0 max(28px, env(safe-area-inset-bottom)); }
     h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.5px; }
     p { margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: #586274; }
-    video { display: block; width: 100%; aspect-ratio: 3 / 4; background: #111827; border-radius: 14px; box-shadow: 0 8px 32px #17202e14; }
+    video { display: block; width: 100%; aspect-ratio: 3 / 4; background: #111827; }
+    button { display: block; width: 100%; margin-top: 14px; padding: 13px; border: 0; border-radius: 10px; background: #145db5; color: white; font: inherit; cursor: pointer; }
+    button[hidden] { display: none; }
+    #status { margin: 10px 0 0; text-align: center; }
     footer { margin-top: 18px; text-align: center; font-size: 14px; line-height: 1.8; color: #586274; }
     a { color: #145db5; text-underline-offset: 3px; }
   </style>
@@ -21,11 +24,33 @@
   <main>
     <h1>技能羽毛球</h1>
     <p>AI 辅助开发 · 项目视频演示</p>
-    <video controls playsinline preload="metadata" poster="poster.jpg" aria-label="技能羽毛球项目演示视频">
-      <source src="badminton-demo.mp4" type="video/mp4">
-      当前浏览器不支持内嵌播放，请<a href="badminton-demo.mp4">打开视频</a>观看。
+    <video id="demo" controls playsinline webkit-playsinline preload="auto" aria-label="技能羽毛球项目演示视频">
+      <source src="badminton-demo-v2.mp4" type="video/mp4">
+      当前浏览器不支持内嵌播放，请<a href="badminton-demo-v2.mp4">打开视频</a>观看。
     </video>
-    <footer>点击播放按钮观看<br>如无法播放，可<a href="badminton-demo.mp4">直接打开视频</a></footer>
+    <button id="play" type="button" aria-controls="demo" hidden>播放视频</button>
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer>点击播放按钮观看<br>如无法播放，可<a href="badminton-demo-v2.mp4">直接打开视频</a></footer>
   </main>
+  <script>
+    const video = document.getElementById('demo');
+    const play = document.getElementById('play');
+    const status = document.getElementById('status');
+    play.hidden = false;
+    play.addEventListener('click', () => {
+      status.textContent = '';
+      // Keep play() inside the user's tap, including in iOS WeChat.
+      video.play().catch(() => {
+        status.textContent = '暂时无法播放，请重试或点击下方“直接打开视频”。';
+      });
+    });
+    video.addEventListener('playing', () => { play.hidden = true; status.textContent = ''; });
+    video.addEventListener('pause', () => { play.hidden = false; play.textContent = '继续播放'; });
+    video.addEventListener('ended', () => { play.hidden = false; play.textContent = '重新播放'; });
+    video.addEventListener('error', () => {
+      play.hidden = false;
+      status.textContent = '视频加载失败，请点击下方“直接打开视频”，或在浏览器中打开。';
+    });
+  </script>
 </body>
 </html>
