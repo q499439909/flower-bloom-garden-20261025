@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fa">
+  <meta name="description" content="技能羽毛球小程序项目视频演示。">
+  <title>技能羽毛球 · 项目演示</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7fa; color: #17202e; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    main { width: min(100% - 32px, 440px); margin: 0 auto; padding: 28px 0 max(28px, env(safe-area-inset-bottom)); }
+    h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.5px; }
+    p { margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: #586274; }
+    video { display: block; width: 100%; aspect-ratio: 3 / 4; background: #111827; border-radius: 14px; box-shadow: 0 8px 32px #17202e14; }
+    footer { margin-top: 18px; text-align: center; font-size: 14px; line-height: 1.8; color: #586274; }
+    a { color: #145db5; text-underline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>技能羽毛球</h1>
+    <p>AI 辅助开发 · 项目视频演示</p>
+    <video controls playsinline preload="metadata" poster="poster.jpg" aria-label="技能羽毛球项目演示视频">
+      <source src="badminton-demo.mp4" type="video/mp4">
+      当前浏览器不支持内嵌播放，请<a href="badminton-demo.mp4">打开视频</a>观看。
+    </video>
+    <footer>点击播放按钮观看<br>如无法播放，可<a href="badminton-demo.mp4">直接打开视频</a></footer>
+  </main>
+</body>
+</html>
