@@ -12,7 +12,7 @@ const flowers=[
  {name:'暖阳予你',latin:'A Little Sunshine',blessing:['采一束阳光，藏进金色花瓣，','把温暖与欢喜，轻轻送到你身旁。','愿你眼里常有光，心中常有暖，','一路明媚，自在芬芳。'],keywords:'温暖 · 陪伴',poster:'assets/posters/rose.jpg',video:'assets/video/rose-web.mp4',displayScale:1.44,path:'rose-full-display',accent:'#e9cb79',count:169,digits:5,width:1112,height:834},
  {name:'春日来信',latin:'Letters from Spring',blessing:['春风寄来一封信，','写满温柔与新生。','愿所有美好如约而至，','所有期待次第花开。'],keywords:'希望 · 新启',poster:'assets/posters/spring-letter.jpg',video:'assets/video/spring-letter-web.mp4',displayScale:1,path:'spring-letter-display',accent:'#c7bcdf',count:95,digits:5,width:834,height:1112}
 ];
-let selected=0,target=0,current=0,shown=-1,mode='hand';
+let selected=0,target=0,current=0,shown=-1,mode='smile';
 let stream=null,active=false,starting=false,manual=false,raw=null,lastSeen=0;
 let lastVideo=-1,lastDetect=0,busy=false,visionClient=null,processingVision=false,visionEpoch=0;
 const defaults={hand:[.08,1.2],smile:[.08,.65]},ranges={hand:[...defaults.hand],smile:[...defaults.smile]};
@@ -215,7 +215,7 @@ async function setMode(next){
  resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();$('reset-hand-roles').hidden=mode!=='hand';raw=null;lastSeen=0;lastVideo=-1;
  for(const name of ['hand','smile'])for(const id of ['home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
  $('home-calibrate').textContent=mode==='hand'?'校准手势 ↗':'校准微笑 ↗';
- $('home-instruction').innerHTML=mode==='hand'?'先举起的手捏合开花，<br>另一只手挥动切花。<br>双手放下后，重新分配。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
+ $('home-instruction').innerHTML=mode==='hand'?'先举起的手捏合开花，<br>另一只手挥动切花。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
  if(active){busy=true;updateModeBusy();syncHomeStatus();status('正在准备'+(mode==='hand'?'手势':'笑容')+'识别…');try{await modelForMode();}catch(e){stopCamera();status('识别模型加载失败，请重新开启摄像头。');console.error(e);}finally{busy=false;updateModeBusy();}}
 }
 $('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');
