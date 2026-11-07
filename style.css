@@ -320,3 +320,11 @@ html{scroll-snap-type:none}
 .camera-controls .camera-hud{flex-direction:row;align-items:flex-start;justify-content:flex-start}
 .camera-controls .camera-topline{display:contents}
 .camera-controls #swipe-guide{order:-1;flex:1;min-width:0}
+
+/* Calibration reuses the live camera and landmark canvas inside the dialog. */
+#calibration-dialog{max-height:calc(100svh - 32px);overflow:auto}
+#calibration-dialog .calibration-camera{position:static;display:block;width:100%;max-width:none;margin:0 0 14px;align-self:auto}
+.calibration-camera .camera{width:100%;aspect-ratio:4/3;max-height:36svh}
+.calibration-camera .camera-hud{display:none}
+.calibration-start{display:block;width:100%;margin:0 0 14px;padding:9px 12px;border:1px solid #48543b;border-radius:7px;background:#252e20;color:#d1dec2;font-size:12px}
+.calibration-start[hidden]{display:none}

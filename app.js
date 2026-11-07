@@ -56,7 +56,9 @@ function setPreviewCue(text,state='idle'){
  setText('preview-cue',text);$('preview-cue').dataset.state=state;
 }
 function syncHomeStatus(){
- $('home-camera').hidden=active||starting;
+ $('calibration-start').hidden=active;
+ $('calibration-start').disabled=starting;
+ $('calibration-start').textContent=starting?'正在开启…':'开启摄像头';
  if(starting||busy){setPreviewCue(lastModelStage||'正在准备识别…','loading');return;}
  if(playback){setPreviewCue(playback.finished?'已盛放':'播放中');return;}
  const cues={ready:'可挥手切花',arming:'准备切花…',switched:'已切换',cooldown:'稍等片刻'};
@@ -241,6 +243,7 @@ async function startCamera(){
   if(lastModelStage)setPreviewCue(lastModelStage,'loading');
   await modelForMode();$('camera-dock').dataset.readyMs=String(Math.round(performance.now()));
   active=true;manual=false;lastSeen=0;lastVideo=-1;resetHandRoles();
+  if($('calibration-dialog').open)$('calibration-feedback').textContent='请保持'+(mode==='hand'?'花开手':'面部')+'在镜头内。';
   $('camera-placeholder').hidden=true;$('start').textContent='关闭摄像头';
   if(consent.open)consent.close();status('摄像头已开启，请进入画面。');return true;
  }catch(e){
@@ -252,7 +255,7 @@ async function startCamera(){
 $('start').onclick=()=>{if(active){stopCamera();status('摄像头已关闭。');}else showCameraConsent();};
 $('camera-allow').onclick=()=>startCamera();
 $('camera-later').onclick=()=>{if(!starting){consent.close();syncHomeStatus();}};
-$('home-camera').onclick=()=>showCameraConsent();
+$('calibration-start').onclick=()=>showCameraConsent();
 consent.addEventListener('cancel',event=>{if(starting)event.preventDefault();});
 $('home-play').onclick=async()=>{
  if(playback){resumeInteraction();showSwipeGuide({state:active?(mode==='hand'?'first':'waiting'):'off',progress:0});return;}
@@ -260,13 +263,24 @@ $('home-play').onclick=async()=>{
  $('home-play').textContent='恢复互动 ↗';syncHomeStatus();
  try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setPreviewCue(error.message,'error');}
 };
+const cameraView=video.closest('.camera');
+function moveCameraPreview(parent){
+ parent.append(cameraView);
+ if(stream)video.play().catch(()=>status('无法显示摄像头画面，请重新开启。'));
+}
+$('calibration-dialog').addEventListener('close',()=>{
+ if($('calibration-dialog').open)return;
+ moveCameraPreview($('camera-panel'));applyPreviewVisibility();
+});
 $('home-calibrate').onclick=()=>{
  resumeInteraction();calibrationClosed=null;$('home-opened').disabled=true;
  $('home-reassign').hidden=mode!=='hand';
  $('calibration-title').textContent=mode==='hand'?'校准指尖':'校准微笑';
  $('home-calibration-help').textContent=mode==='hand'?'先捏合花开手的拇指与食指，记录合拢；再自然分开两指，记录盛开。':'先保持自然表情，记录合拢；再露出大大的笑容，记录盛开。';
  $('calibration-feedback').textContent=active?'请保持'+(mode==='hand'?'花开手':'面部')+'在镜头内。':'请先开启摄像头，再进行校准。';
+ moveCameraPreview($('calibration-camera'));
  $('calibration-dialog').showModal();
+ syncHomeStatus();
 };
 for(const [id,index] of [['home-closed',0],['home-opened',1]])$(id).onclick=()=>{
  const feedback=$('calibration-feedback');
