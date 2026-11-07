@@ -3,7 +3,7 @@ import {createVisionClient} from './vision-client.js?v=delivery1';
 import {createVideoSequence} from './video-sequence.js';
 import {pinchRatio,drawTracking} from './tracking.js';
 import {createSwipeDetector,isOpenPalm} from './swipe.js';
-import {createHandRoleTracker} from './hand-roles.js';
+import {createHandRoleTracker} from './hand-roles.js?v=arrival2';
 const $=id=>document.getElementById(id);
 const canvas=$('flower'),ctx=canvas.getContext('2d'),video=$('video'),overlay=$('tracking');
 const clamp=v=>Math.max(0,Math.min(1,v));
@@ -167,7 +167,10 @@ async function track(now){
   if(!active||manual||mode!==requestedMode||visionEpoch!==epoch)return;
   clearTracking();const hands=result.hands;
   let roles;
-  if(mode==='hand')roles=handRoles.update(hands.landmarks,hands.handedness,now);
+  if(mode==='hand'){
+   roles=handRoles.update(hands.landmarks,hands.handedness,now);
+   if(roles.sessionReset)swipe.reset();
+  }
   else roles={control:null,switcher:hands.landmarks[0]?{points:hands.landmarks[0],id:hands.handedness[0]?.[0]?.categoryName||'smile-hand'}:null,needsFirst:false,assigned:[false,!!hands.landmarks[0]]};
   let swipeState;
   if(roles.switcher){
@@ -212,7 +215,7 @@ async function setMode(next){
  resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();$('reset-hand-roles').hidden=mode!=='hand';raw=null;lastSeen=0;lastVideo=-1;
  for(const name of ['hand','smile'])for(const id of ['home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
  $('home-calibrate').textContent=mode==='hand'?'校准手势 ↗':'校准微笑 ↗';
- $('home-instruction').innerHTML=mode==='hand'?'先入镜的手捏合开花，<br>另一只手张掌挥动切花。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
+ $('home-instruction').innerHTML=mode==='hand'?'先举起的手捏合开花，<br>另一只手挥动切花。<br>双手放下后，重新分配。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
  if(active){busy=true;updateModeBusy();syncHomeStatus();status('正在准备'+(mode==='hand'?'手势':'笑容')+'识别…');try{await modelForMode();}catch(e){stopCamera();status('识别模型加载失败，请重新开启摄像头。');console.error(e);}finally{busy=false;updateModeBusy();}}
 }
 $('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');

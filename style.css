@@ -295,3 +295,14 @@ html{scroll-snap-type:none}
  .garden #home-camera{grid-column:1;grid-row:4;margin-top:8px}
  .camera-controls #preview-cue{font-size:9px}
 }
+
+/* Mobile introductions form one centered group above the flower and letter. */
+@media(max-width:540px){
+ .garden-heading{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:0;padding:6px 0 18px}
+ .garden-heading h1{font-size:24px;line-height:1.5;margin:0 0 12px;letter-spacing:1px}
+ .garden-heading h1 br{display:none}
+ .garden-heading .home-modes{align-self:center;justify-self:auto;margin:0}
+ .garden-heading #home-instruction{font-size:11px;line-height:1.8;margin:12px 0 0;text-align:center}
+ .garden-heading .home-actions{flex-direction:row;justify-content:center;align-items:center;align-content:normal;gap:18px;margin:12px 0 0}
+ .garden #home-camera{align-self:center;margin-top:10px}
+}

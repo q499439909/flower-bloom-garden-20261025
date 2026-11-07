@@ -1,17 +1,21 @@
 const center=p=>{const ids=[0,5,9,13,17];return {x:ids.reduce((s,i)=>s+p[i].x,0)/5,y:ids.reduce((s,i)=>s+p[i].y,0)/5};};
 // Roles are assigned by arrival, not by left/right classification or detector order.
-// Keep empty slots reserved when a previously assigned hand leaves the camera.
-export function createHandRoleTracker(){
- let slots=[];
+// Reserve roles during brief gaps; lowering both hands starts a new round.
+export function createHandRoleTracker({emptyResetMs=450}={}){
+ let slots=[],emptySince=null;
  const assign=(d,time,role)=>({id:role,label:d.label,position:d.position,lastSeen:time});
  return {
-  reset(){slots=[];},
+  reset(){slots=[];emptySince=null;},
   update(landmarks,handedness,time){
    const detections=landmarks.map((points,index)=>({points,index,position:center(points),label:handedness[index]?.[0]?.categoryName||'Unknown'}));
+   let sessionReset=false;
+   if(!detections.length&&emptySince===null)emptySince=time;
+   if(emptySince!==null&&time-emptySince>=emptyResetMs&&slots.length){slots=[];sessionReset=true;}
+   if(detections.length)emptySince=null;
    if(!slots.length){
-    if(detections.length!==1)return {control:null,switcher:null,needsFirst:true,assigned:[false,false]};
+    if(detections.length!==1)return {control:null,switcher:null,needsFirst:true,assigned:[false,false],sessionReset};
     slots[0]=assign(detections[0],time,'first');
-    return {control:{...detections[0],id:'first'},switcher:null,needsFirst:false,assigned:[true,false]};
+    return {control:{...detections[0],id:'first'},switcher:null,needsFirst:false,assigned:[true,false],sessionReset};
    }
    const cost=(slot,d)=>{
     const distance=Math.hypot(slot.position.x-d.position.x,slot.position.y-d.position.y);
