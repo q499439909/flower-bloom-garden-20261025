@@ -328,8 +328,3 @@ html{scroll-snap-type:none}
 .calibration-camera .camera-hud{display:none}
 .calibration-start{display:block;width:100%;margin:0 0 14px;padding:9px 12px;border:1px solid #48543b;border-radius:7px;background:#252e20;color:#d1dec2;font-size:12px}
 .calibration-start[hidden]{display:none}
-
-/* Raise only the desktop scene; keep corner tools and mobile flow anchored. */
-@media(min-width:541px){
- .hero-scene>.garden-heading,.hero-scene>.flower,.letter-column>.flower-letter{position:relative;top:-6svh}
-}
