@@ -152,7 +152,6 @@ function resetHandRoles(){
  setText('role-switch',mode==='hand'?'② 切花手 · 等待入镜':'手掌切花 · 等待入镜');
  showSwipeGuide({state:active?(manual?'paused':mode==='hand'?'first':'waiting'):'off',progress:0});
 }
-$('reset-hand-roles').onclick=()=>{resetHandRoles();status('分工已重置，请先只伸入一只手，再伸入第二只手。');};
 async function track(now){
  requestAnimationFrame(track);
  if(!active||starting||busy||manual||processingVision||video.readyState<2||now-lastDetect<40||lastVideo===video.currentTime)return;
@@ -212,15 +211,15 @@ async function track(now){
 }requestAnimationFrame(track);
 async function setMode(next){
  if(next===mode||busy||starting)return;
- resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();$('reset-hand-roles').hidden=mode!=='hand';raw=null;lastSeen=0;lastVideo=-1;
+ resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();raw=null;lastSeen=0;lastVideo=-1;
  for(const name of ['hand','smile'])for(const id of ['home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
  $('home-calibrate').textContent=mode==='hand'?'校准手势 ↗':'校准微笑 ↗';
- $('home-instruction').innerHTML=mode==='hand'?'先举起的手捏合开花，<br>另一只手挥动切花。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
+ $('home-instruction').innerHTML=mode==='hand'?'先举起的手，拇指与食指<br>捏合、松开控制花朵开合。<br>另一只手张掌挥动切花。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
  if(active){busy=true;updateModeBusy();syncHomeStatus();status('正在准备'+(mode==='hand'?'手势':'笑容')+'识别…');try{await modelForMode();}catch(e){stopCamera();status('识别模型加载失败，请重新开启摄像头。');console.error(e);}finally{busy=false;updateModeBusy();}}
 }
 $('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');
 function stopCamera(){
- active=false;resetHandRoles();$('reset-hand-roles').disabled=true;stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;raw=null;
+ active=false;resetHandRoles();stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;raw=null;
  $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').textContent='开启摄像头';manual=false;
 }
 const consent=$('camera-consent');
@@ -241,7 +240,7 @@ async function startCamera(){
   $('camera-placeholder').hidden=true;if(consent.open)consent.close();
   if(lastModelStage)setPreviewCue(lastModelStage,'loading');
   await modelForMode();$('camera-dock').dataset.readyMs=String(Math.round(performance.now()));
-  active=true;manual=false;lastSeen=0;lastVideo=-1;resetHandRoles();$('reset-hand-roles').disabled=false;
+  active=true;manual=false;lastSeen=0;lastVideo=-1;resetHandRoles();
   $('camera-placeholder').hidden=true;$('start').textContent='关闭摄像头';
   if(consent.open)consent.close();status('摄像头已开启，请进入画面。');return true;
  }catch(e){
