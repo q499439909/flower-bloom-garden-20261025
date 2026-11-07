@@ -1,7 +1,8 @@
 const clamp=value=>Math.max(0,Math.min(1,value));
+export const BLOOM_HOLD_MS=2000;
 
 // One round belongs to one selected flower or one explicitly requested replay.
-export function createBloomExperience({threshold=.94,stableMs=500,holdMs=2000,neutralThreshold=.18,neutralMs=180,freshMs=750}={}){
+export function createBloomExperience({threshold=.94,stableMs=500,holdMs=BLOOM_HOLD_MS,neutralThreshold=.18,neutralMs=180,freshMs=750}={}){
  let phase,aboveSince,neutralSince,holdUntil,input,inputAt,lastUpdate,revealed;
  function reset({requireNeutral=false}={}){
   phase=requireNeutral?'waiting':'interactive';aboveSince=neutralSince=null;

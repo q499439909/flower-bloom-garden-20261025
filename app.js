@@ -1,7 +1,8 @@
 import {launchCamera} from './camera-launch.js';
 import {createVisionClient} from './vision-client.js?v=delivery1';
 import {createVideoSequence} from './video-sequence.js';
-import {createBloomExperience} from './bloom-experience.js?v=bloom1';
+import {createBloomExperience} from './bloom-experience.js?v=feedback2';
+import {bloomGlowEffect,bloomProgressFeedback} from './bloom-feedback.js?v=feedback2';
 import {pinchRatio,drawTracking} from './tracking.js';
 import {createSwipeDetector,isOpenPalm} from './swipe.js';
 import {createHandRoleTracker} from './hand-roles.js?v=arrival2';
@@ -85,11 +86,8 @@ function revealBlessing(){
  $('flower-letter').querySelectorAll('.letter-wish,.letter-keywords').forEach(node=>node.removeAttribute('aria-hidden'));
  $('bloom-announcement').textContent=flowers[selected].blessing.slice(2).join('');
  if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
-  glowAnimation?.cancel();glowAnimation=$('bloom-glow').animate([
-   {opacity:0,transform:'translate(-50%,-50%) scale(.92)'},
-   {opacity:.24,transform:'translate(-50%,-50%) scale(1.02)',offset:.25},
-   {opacity:0,transform:'translate(-50%,-50%) scale(1.22)'}
-  ],{duration:2200,easing:'ease-out'});
+  const {keyframes,options}=bloomGlowEffect();
+  glowAnimation?.cancel();glowAnimation=$('bloom-glow').animate(keyframes,options);
  }
 }
 function selectFlower(index){
@@ -124,6 +122,16 @@ function selectFlower(index){
 flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
+let lastMeterState='';
+function updateBloomMeter(phase){
+ const {percent,note}=bloomProgressFeedback(shown,flowers[selected].count,phase),key=percent+':'+note;
+ if(key===lastMeterState)return;lastMeterState=key;
+ $('bloom-percent').textContent=String(percent);$('bloom-progress-note').textContent=note;
+ $('bloom-meter').setAttribute('aria-valuenow',String(percent));
+ $('bloom-meter').setAttribute('aria-valuetext',percent+'% · '+note);
+ $('bloom-meter').dataset.phase=phase;
+ $('bloom-meter').style.setProperty('--bloom-progress',String(percent/100));
+}
 function animate(now=performance.now()){
  const state=experience.update({time:now,progress:shown<0?0:shown/(flowers[selected].count-1),autoplay:!!playback,
   allowCompletion:!$('calibration-dialog').open&&!transitionPending&&transitionStarted===null&&(!playback||!sequence.buffering||sequence.ended)});
@@ -151,6 +159,7 @@ function animate(now=performance.now()){
   transitionOpacity=1-progress*progress*(3-2*progress);transitionCanvas.style.opacity=String(transitionOpacity);
   if(progress===1){transitionCanvas.hidden=true;transitionStarted=null;}
  }
+ updateBloomMeter(state.phase);
  requestAnimationFrame(animate);
 }animate();
 async function modelForMode(){

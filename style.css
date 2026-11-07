@@ -338,3 +338,23 @@ html{scroll-snap-type:none}
 @media(prefers-reduced-motion:reduce){
  #flower-letter[data-revealed=true] .letter-wish,#flower-letter[data-revealed=true] .letter-keywords{transform:none;transition:opacity .15s ease;transition-delay:0s}
 }
+
+/* The image clips inside its own frame; the halo can breathe beyond it. */
+.garden .flower{overflow:visible;contain:layout;isolation:isolate}
+.flower-art{position:absolute;inset:0;overflow:hidden;contain:layout paint;z-index:1}
+.bloom-glow{z-index:2}
+.bloom-meter{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(100%,230px);text-align:center;z-index:3;pointer-events:none}
+.bloom-meter-line{display:flex;align-items:center;justify-content:center;gap:16px}
+.bloom-meter-number{display:flex;align-items:baseline;gap:4px;color:#dddcd0;font-family:Georgia,'Songti SC',serif;font-size:30px;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:1px}
+.bloom-meter-number small{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#969b8d;letter-spacing:0}
+.bloom-meter-rule{height:1px;flex:1;max-width:48px;background:linear-gradient(to right,transparent,var(--flower-accent));opacity:calc(.22 + var(--bloom-progress,0)*.4)}
+.bloom-meter-rule:last-child{transform:scaleX(-1)}
+#bloom-progress-note{font-size:10px;line-height:1.6;letter-spacing:1.2px;color:#7e8876;margin:8px 0 0}
+.bloom-meter[data-phase=holding] .bloom-meter-number{color:var(--flower-accent)}
+.bloom-meter[data-phase=holding] #bloom-progress-note{color:#b9c5ad}
+@media(max-width:540px){
+ .bloom-meter{bottom:-78px;width:100%;max-width:180px}
+ .bloom-meter-line{gap:10px}.bloom-meter-number{font-size:24px}
+ .bloom-meter-rule{max-width:30px}#bloom-progress-note{font-size:9px;letter-spacing:.5px;margin-top:6px}
+ .bloom-glow{filter:blur(12px)}
+}
