@@ -37,15 +37,33 @@ function resumeInteraction(){sequence?.pause();playback=null;manual=false;lastSe
 function updateModeBusy(){
  for(const id of ['home-hand','home-smile'])$(id).disabled=busy||starting;
 }
+let previewCollapsed=false,lastSwipeState='off';
+try{previewCollapsed=localStorage.getItem('flower-preview-collapsed')==='true';}catch{}
+function applyPreviewVisibility(){
+ $('camera-dock').classList.toggle('collapsed',previewCollapsed);
+ $('camera-panel').setAttribute('aria-hidden',String(previewCollapsed));
+ $('camera-panel').inert=previewCollapsed;
+ $('camera-toggle').setAttribute('aria-expanded',String(!previewCollapsed));
+ $('camera-toggle').textContent=previewCollapsed?'显示镜头':'收起镜头';
+ $('start').hidden=previewCollapsed;
+}
+$('camera-toggle').onclick=()=>{
+ previewCollapsed=!previewCollapsed;applyPreviewVisibility();
+ try{localStorage.setItem('flower-preview-collapsed',String(previewCollapsed));}catch{}
+};
+applyPreviewVisibility();
+function setPreviewCue(text,state='idle'){
+ setText('preview-cue',text);$('preview-cue').dataset.state=state;
+}
 function syncHomeStatus(){
- setText('home-control-state',$('role-control').textContent.replace(/^[①②] /,'').replace('已锁定','已识别'));
- setText('home-switch-state',$('role-switch').textContent.replace(/^[①②] /,'').replace('已锁定','已识别'));
  $('home-camera').hidden=active||starting;
- if(starting||busy)setText('home-swipe-title','正在准备'+(mode==='hand'?'手势':'微笑')+'识别…');
- if(playback){setText('home-swipe-title',playback.finished?'花已盛放 · 点击恢复互动':sequence?.buffering?'正在缓冲花开画面…':'正在播放完整花开…');$('home-recognition').dataset.state='playing';}
+ if(starting||busy){setPreviewCue(lastModelStage||'正在准备识别…','loading');return;}
+ if(playback){setPreviewCue(playback.finished?'已盛放':'播放中');return;}
+ const cues={ready:'可挥手切花',arming:'准备切花…',switched:'已切换',cooldown:'稍等片刻'};
+ setPreviewCue(active?(cues[lastSwipeState]||'识别中'):'摄像头已关闭',lastSwipeState);
 }
 
-function status(text){const notice=$('status');notice.textContent=text;notice.hidden=!/失败|无法启动|未找到摄像头|请在浏览器|请先开启|识别暂时|已记录|两个状态|已恢复默认|分工已重置/.test(text);}
+function status(text){const notice=$('status');notice.textContent=text;notice.hidden=!/失败|无法启动|未找到摄像头|请在浏览器|请先开启|识别暂时|已记录|两个状态|已恢复默认|分工已重置/.test(text);if(!notice.hidden)setPreviewCue(text,'error');}
 function selectFlower(index){
  const next=(index+flowers.length)%flowers.length;if(next===selected&&shown!==-1)return;
  if(shown!==-1)snapshotFlower();
@@ -68,7 +86,7 @@ function selectFlower(index){
  if(preview.complete&&preview.naturalWidth)paintPreview();document.documentElement.style.setProperty('--flower-accent',f.accent);
  $('letter-name').textContent=f.name;$('letter-english').textContent=f.latin;
  $('letter-blessing').replaceChildren(...f.blessing.map(line=>{const p=document.createElement('p');p.textContent=line;return p;}));
- $('letter-keywords').textContent='关键词：'+f.keywords;
+ $('letter-keywords').textContent=f.keywords;
  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)$('flower-letter').animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:650,easing:'ease-out'});
  canvas.setAttribute('aria-label',`随动作绽放的${f.name}`);
  for(let i=0;i<flowers.length;i++){$('flower-'+i).classList.toggle('selected',selected===i);$('flower-'+i).setAttribute('aria-pressed',String(selected===i));}
@@ -99,7 +117,7 @@ function animate(now=performance.now()){
  requestAnimationFrame(animate);
 }animate();
 async function modelForMode(){
- if(!visionClient)visionClient=createVisionClient({onProgress:message=>{lastModelStage=message;if(starting||busy){setText('home-swipe-title',message);if(starting)$('camera-allow').textContent=message;}}});
+ if(!visionClient)visionClient=createVisionClient({onProgress:message=>{lastModelStage=message;if(starting||busy){setPreviewCue(message,'loading');if(starting)$('camera-allow').textContent=message;}}});
  await visionClient.request('init',{mode});
 }
 function clearTracking(){drawTracking(overlay,null,mode,video.videoWidth||640,video.videoHeight||480);$('tracking-value').textContent='';}
@@ -118,10 +136,7 @@ function showSwipeGuide(result,roles=null){
   cooldown:['切换完成 · 稍等一下','保持手掌在画面中，很快可以再次准备。']
  };
  const [title,help]=messages[result.state]||messages.waiting;
- $('home-recognition').dataset.state=result.state;
- setText('home-swipe-title',title);
- $('home-progress-fill').style.width=`${Math.round(result.progress*100||0)}%`;
- $('home-progress').setAttribute('aria-valuenow',String(Math.round(result.progress*100||0)));
+ lastSwipeState=result.state;
  $('swipe-guide').dataset.state=result.state;setText('swipe-title',title);setText('swipe-help',help);
  $('swipe-progress-fill').style.width=`${Math.round(result.progress*100||0)}%`;
  $('swipe-progress').setAttribute('aria-valuenow',String(Math.round(result.progress*100||0)));
@@ -197,13 +212,13 @@ async function setMode(next){
  resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();$('reset-hand-roles').hidden=mode!=='hand';raw=null;lastSeen=0;lastVideo=-1;
  for(const name of ['hand','smile'])for(const id of ['home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
  $('home-calibrate').textContent=mode==='hand'?'校准手势 ↗':'校准微笑 ↗';
- $('home-instruction').innerHTML=mode==='hand'?'第一只手：拇指与食指捏合控制花开。<br>第二只手：张掌后左右挥动切花。':'自然表情含苞，笑得越开心，花开越盛。<br>一只手张掌后左右挥动切花。';
+ $('home-instruction').innerHTML=mode==='hand'?'先入镜的手捏合开花，<br>另一只手张掌挥动切花。':'笑得越开心，花开越盛。<br>张掌挥动，切换下一朵。';
  if(active){busy=true;updateModeBusy();syncHomeStatus();status('正在准备'+(mode==='hand'?'手势':'笑容')+'识别…');try{await modelForMode();}catch(e){stopCamera();status('识别模型加载失败，请重新开启摄像头。');console.error(e);}finally{busy=false;updateModeBusy();}}
 }
 $('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');
 function stopCamera(){
  active=false;resetHandRoles();$('reset-hand-roles').disabled=true;stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;raw=null;
- $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').innerHTML='摄像头设置 <span>↗</span>';manual=false;
+ $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').textContent='开启摄像头';manual=false;
 }
 const consent=$('camera-consent');
 const consentMessage='用手势或笑容让花绽放。画面仅在当前浏览器处理，不上传、不录制，也不使用麦克风。';
@@ -221,10 +236,10 @@ async function startCamera(){
   stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:'user'},audio:false});
   video.srcObject=stream;await video.play();
   $('camera-placeholder').hidden=true;if(consent.open)consent.close();
-  if(lastModelStage)setText('home-swipe-title',lastModelStage);
-  await modelForMode();$('home-recognition').dataset.readyMs=String(Math.round(performance.now()));
+  if(lastModelStage)setPreviewCue(lastModelStage,'loading');
+  await modelForMode();$('camera-dock').dataset.readyMs=String(Math.round(performance.now()));
   active=true;manual=false;lastSeen=0;lastVideo=-1;resetHandRoles();$('reset-hand-roles').disabled=false;
-  $('camera-placeholder').hidden=true;$('start').innerHTML='关闭摄像头 <span>×</span>';
+  $('camera-placeholder').hidden=true;$('start').textContent='关闭摄像头';
   if(consent.open)consent.close();status('摄像头已开启，请进入画面。');return true;
  }catch(e){
   stopCamera();
@@ -241,7 +256,7 @@ $('home-play').onclick=async()=>{
  if(playback){resumeInteraction();showSwipeGuide({state:active?(mode==='hand'?'first':'waiting'):'off',progress:0});return;}
  manual=false;swipe.reset();current=0;target=0;const session=playback={finished:false};
  $('home-play').textContent='恢复互动 ↗';syncHomeStatus();
- try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setText('home-swipe-title',error.message);}
+ try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setPreviewCue(error.message,'error');}
 };
 $('home-calibrate').onclick=()=>{
  resumeInteraction();calibrationClosed=null;$('home-opened').disabled=true;
