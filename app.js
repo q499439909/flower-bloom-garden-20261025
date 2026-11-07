@@ -1,6 +1,7 @@
 import {launchCamera} from './camera-launch.js';
 import {createVisionClient} from './vision-client.js?v=delivery1';
 import {createVideoSequence} from './video-sequence.js';
+import {createBloomExperience} from './bloom-experience.js?v=bloom1';
 import {pinchRatio,drawTracking} from './tracking.js';
 import {createSwipeDetector,isOpenPalm} from './swipe.js';
 import {createHandRoleTracker} from './hand-roles.js?v=arrival2';
@@ -16,7 +17,8 @@ let selected=0,target=0,current=0,shown=-1,mode='smile';
 let stream=null,active=false,starting=false,manual=false,raw=null,lastSeen=0;
 let lastVideo=-1,lastDetect=0,busy=false,visionClient=null,processingVision=false,visionEpoch=0;
 const defaults={hand:[.08,1.2],smile:[.08,.65]},ranges={hand:[...defaults.hand],smile:[...defaults.smile]};
-const swipe=createSwipeDetector(),handRoles=createHandRoleTracker();
+const swipe=createSwipeDetector(),handRoles=createHandRoleTracker(),experience=createBloomExperience();
+let glowAnimation=null;
 const sequences=new Map();let sequence=null,lastModelStage='';
 const preview=$('flower-preview'),inlinePeonyPreview=preview.src;
 const transitionCanvas=$('flower-transition'),transitionCtx=transitionCanvas.getContext('2d');
@@ -33,7 +35,7 @@ function snapshotFlower(){
  transitionCanvas.width=snapshot.width;transitionCanvas.height=snapshot.height;transitionCtx.drawImage(snapshot,0,0);
  transitionCanvas.hidden=false;transitionCanvas.style.opacity='1';transitionOpacity=1;transitionPending=true;transitionStarted=null;
 }
-function resumeInteraction(){sequence?.pause();playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('home-play').textContent='播放花开 ▷';}
+function resumeInteraction(){experience.cancelHold();experience.clearInput();sequence?.pause();playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('home-play').textContent=experience.revealed?'重看花开 ▷':'播放花开 ▷';}
 function updateModeBusy(){
  for(const id of ['home-hand','home-smile'])$(id).disabled=busy||starting;
 }
@@ -61,18 +63,44 @@ function syncHomeStatus(){
  $('calibration-start').textContent=starting?'正在开启…':'开启摄像头';
  if(starting||busy){setPreviewCue(lastModelStage||'正在准备识别…','loading');return;}
  if(playback){setPreviewCue(playback.finished?'已盛放':'播放中');return;}
+ if(active&&experience.waitingForNeutral){
+  const hint=mode==='hand'?'先捏合两指，再分开花开':'先放松表情，再微笑花开';
+  if(!['ready','arming','switched','cooldown'].includes(lastSwipeState))setText('swipe-title',hint);
+  setPreviewCue(hint);return;
+ }
  const cues={ready:'可挥手切花',arming:'准备切花…',switched:'已切换',cooldown:'稍等片刻'};
  setPreviewCue(active?(cues[lastSwipeState]||'识别中'):'摄像头已关闭',lastSwipeState);
 }
 
 function status(text){const notice=$('status');notice.textContent=text;notice.hidden=!/失败|无法启动|未找到摄像头|请在浏览器|请先开启|识别暂时|已记录|两个状态|已恢复默认|分工已重置/.test(text);if(!notice.hidden)setPreviewCue(text,'error');}
+function resetBloomRound(requireNeutral=false){
+ experience.reset({requireNeutral});glowAnimation?.cancel();
+ $('flower-letter').dataset.revealed='false';
+ $('flower-letter').querySelectorAll('.letter-wish,.letter-keywords').forEach(node=>node.setAttribute('aria-hidden','true'));
+ $('bloom-announcement').textContent='';
+ $('home-play').textContent='播放花开 ▷';
+}
+function revealBlessing(){
+ $('flower-letter').dataset.revealed='true';
+ $('flower-letter').querySelectorAll('.letter-wish,.letter-keywords').forEach(node=>node.removeAttribute('aria-hidden'));
+ $('bloom-announcement').textContent=flowers[selected].blessing.slice(2).join('');
+ if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+  glowAnimation?.cancel();glowAnimation=$('bloom-glow').animate([
+   {opacity:0,transform:'translate(-50%,-50%) scale(.92)'},
+   {opacity:.24,transform:'translate(-50%,-50%) scale(1.02)',offset:.25},
+   {opacity:0,transform:'translate(-50%,-50%) scale(1.22)'}
+  ],{duration:2200,easing:'ease-out'});
+ }
+}
 function selectFlower(index){
  const next=(index+flowers.length)%flowers.length;if(next===selected&&shown!==-1)return;
+ const changingFlower=sequence!==null;
  if(shown!==-1)snapshotFlower();
  sequence?.pause();if(playback)resumeInteraction();selected=next;shown=-1;
  const f=flowers[selected];
  if(!sequences.has(selected))sequences.set(selected,createVideoSequence({url:f.video,count:f.count,onError:error=>status(error.message)}));
  sequence=sequences.get(selected);
+ resetBloomRound(changingFlower);current=target=0;sequence.seek(0);
  canvas.width=f.width;canvas.height=Math.ceil(f.height*Math.max(1,.8*f.displayScale));
  preview.hidden=false;preview.style.setProperty('--preview-scale',String(.8*f.displayScale));
  const posterFlower=selected;
@@ -87,7 +115,7 @@ function selectFlower(index){
  preview.onload=paintPreview;preview.src=selected===0?inlinePeonyPreview:f.poster;
  if(preview.complete&&preview.naturalWidth)paintPreview();document.documentElement.style.setProperty('--flower-accent',f.accent);
  $('letter-name').textContent=f.name;$('letter-english').textContent=f.latin;
- $('letter-blessing').replaceChildren(...f.blessing.map(line=>{const p=document.createElement('p');p.textContent=line;return p;}));
+ $('letter-blessing').replaceChildren(...f.blessing.map((line,i)=>{const p=document.createElement('p');p.textContent=line;if(i>=2){p.className='letter-wish';p.setAttribute('aria-hidden','true');}return p;}));
  $('letter-keywords').textContent=f.keywords;
  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)$('flower-letter').animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],{duration:650,easing:'ease-out'});
  canvas.setAttribute('aria-label',`随动作绽放的${f.name}`);
@@ -97,6 +125,13 @@ flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
 function animate(now=performance.now()){
+ const state=experience.update({time:now,progress:shown<0?0:shown/(flowers[selected].count-1),autoplay:!!playback,
+  allowCompletion:!$('calibration-dialog').open&&!transitionPending&&transitionStarted===null&&(!playback||!sequence.buffering||sequence.ended)});
+ canvas.dataset.bloomPhase=state.phase;
+ if(state.celebrate)revealBlessing();
+ if(state.released&&playback?.finished)resumeInteraction();
+ if(state.target!==null&&!playback)target=state.target;
+
  if(playback&&!playback.finished){
   current=target=sequence.position;
   if(sequence.ended){playback.finished=true;current=target=1;}
@@ -107,7 +142,7 @@ function animate(now=performance.now()){
  $('loading').hidden=!!frame||shown===-2||!transitionCanvas.hidden;
  if(frame&&frame.index!==shown){
   if(transitionPending){transitionPending=false;transitionStarted=now;}
-  shown=frame.index;preview.hidden=true;canvas.dataset.firstPaintMs||=String(Math.round(performance.now()));const scale=.8*flower.displayScale,width=flower.width*scale,height=flower.height*scale;
+  shown=frame.index;canvas.dataset.frameIndex=String(shown);preview.hidden=true;canvas.dataset.firstPaintMs||=String(Math.round(performance.now()));const scale=.8*flower.displayScale,width=flower.width*scale,height=flower.height*scale;
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(frame.source,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
  }
  if(!playback||playback.finished)sequence.seek(n);
@@ -201,12 +236,14 @@ async function track(now){
    }
   }
   if(value!==null){
-   raw=value;lastSeen=now;const [lo,hi]=ranges[mode];if(!playback)target=clamp((raw-lo)/(hi-lo));
+   raw=value;lastSeen=now;const [lo,hi]=ranges[mode];
+   if(!$('calibration-dialog').open)experience.sample(clamp((raw-lo)/(hi-lo)),performance.now());
    $('tracking-value').textContent=mode==='hand'?`① 花开手 · 指尖张开 ${Math.round(target*100)}%`:`笑容 ${Math.round(target*100)}%`;
    status(mode==='hand'?'第一只手已锁定控制花开；第二只手张掌，等待绿色就绪提示后挥动切花。':'嘴角控制花开；张开一只手掌，等待绿色就绪提示后挥动切花。');
    $('camera-tag').textContent=mode==='hand'?'● 按入镜顺序分配双手':'● 笑容控制花开';
   }else{
    raw=null;
+   experience.clearInput();
    if(now-lastSeen>900){status(mode==='hand'?(roles.assigned[0]?'花开手暂时离开，花朵保持当前状态。第二只手仍可切花。':'请先只伸入一只手，锁定花开控制手，再伸入第二只手。'):'请面向镜头，让整张脸进入画面；手掌仍可准备切花。');$('camera-tag').textContent='寻找'+(mode==='hand'?'花开手':'面部')+'中';}
   }
  }catch(e){if(active&&epoch===visionEpoch){stopCamera();status('识别暂时出错，请重新开启摄像头。');console.error(e);}}finally{processingVision=false;}
@@ -221,6 +258,7 @@ async function setMode(next){
 }
 $('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');
 function stopCamera(){
+ experience.clearInput();
  active=false;resetHandRoles();stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;raw=null;
  $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').textContent='开启摄像头';manual=false;
 }
@@ -259,7 +297,7 @@ $('calibration-start').onclick=()=>showCameraConsent();
 consent.addEventListener('cancel',event=>{if(starting)event.preventDefault();});
 $('home-play').onclick=async()=>{
  if(playback){resumeInteraction();showSwipeGuide({state:active?(mode==='hand'?'first':'waiting'):'off',progress:0});return;}
- manual=false;swipe.reset();current=0;target=0;const session=playback={finished:false};
+ resetBloomRound();manual=false;swipe.reset();current=0;target=0;const session=playback={finished:false};
  $('home-play').textContent='恢复互动 ↗';syncHomeStatus();
  try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setPreviewCue(error.message,'error');}
 };
