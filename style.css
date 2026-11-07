@@ -282,11 +282,14 @@ html{scroll-snap-type:none}
  .letter-column .flower-letter h2{margin-bottom:14px}
 }
 @media(max-width:540px){
- .letter-column .flower-letter{grid-column:2;grid-row:1}
- .hero-scene{padding-bottom:130px}
+ .hero-scene{grid-template-rows:auto minmax(0,1fr);padding-bottom:130px}
+ .hero-scene .flower{grid-column:1;grid-row:2}
+ .letter-column .flower-letter{grid-column:2;grid-row:2}
  .letter-column>.camera-controls{right:16px;bottom:64px;width:130px;max-width:40%}
  .letter-column>.camera-controls.collapsed{width:auto;max-width:calc(100% - 32px)}
- .garden-heading{grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto}
+ .garden-heading{grid-row:1;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto}
+ .garden-heading h1 br{display:block}
+ .garden-heading::after{top:auto;bottom:0}
  .garden-heading #home-instruction{grid-column:1;grid-row:3}
  .home-actions{grid-column:2;grid-row:2 / span 2;align-content:start;align-items:flex-start;flex-direction:column;gap:6px;margin:0}
  .garden #home-camera{grid-column:1;grid-row:4;margin-top:8px}
