@@ -33,9 +33,9 @@ function snapshotFlower(){
  transitionCanvas.width=snapshot.width;transitionCanvas.height=snapshot.height;transitionCtx.drawImage(snapshot,0,0);
  transitionCanvas.hidden=false;transitionCanvas.style.opacity='1';transitionOpacity=1;transitionPending=true;transitionStarted=null;
 }
-function resumeInteraction(){sequence?.pause();playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('resume').hidden=true;$('home-play').textContent='播放花开 ▷';}
+function resumeInteraction(){sequence?.pause();playback=null;manual=false;lastSeen=0;raw=null;swipe.reset();$('home-play').textContent='播放花开 ▷';}
 function updateModeBusy(){
- for(const id of ['hand','smile','home-hand','home-smile'])$(id).disabled=busy||starting;
+ for(const id of ['home-hand','home-smile'])$(id).disabled=busy||starting;
 }
 function syncHomeStatus(){
  setText('home-control-state',$('role-control').textContent.replace(/^[①②] /,'').replace('已锁定','已识别'));
@@ -76,7 +76,6 @@ function selectFlower(index){
 flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
-let lastPercent=-1;
 function animate(now=performance.now()){
  if(playback&&!playback.finished){
   current=target=sequence.position;
@@ -96,11 +95,6 @@ function animate(now=performance.now()){
   const progress=matchMedia('(prefers-reduced-motion: reduce)').matches?1:clamp((now-transitionStarted)/650);
   transitionOpacity=1-progress*progress*(3-2*progress);transitionCanvas.style.opacity=String(transitionOpacity);
   if(progress===1){transitionCanvas.hidden=true;transitionStarted=null;}
- }
- const percent=Math.round(current*100);
- if(percent!==lastPercent){
-  const percentage=`${percent}<small>%</small>`;$('control-percent').innerHTML=percentage;
-  if(!manual)$('openness').value=percent;lastPercent=percent;
  }
  requestAnimationFrame(animate);
 }animate();
@@ -201,17 +195,15 @@ async function track(now){
 async function setMode(next){
  if(next===mode||busy||starting)return;
  resumeInteraction();mode=next;if($('calibration-dialog').open)$('calibration-dialog').close();resetHandRoles();$('reset-hand-roles').hidden=mode!=='hand';raw=null;lastSeen=0;lastVideo=-1;
- for(const name of ['hand','smile'])for(const id of [name,'home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
+ for(const name of ['hand','smile'])for(const id of ['home-'+name]){$(id).classList.toggle('active',name===mode);$(id).setAttribute('aria-pressed',String(name===mode));}
  $('home-calibrate').textContent=mode==='hand'?'校准手势 ↗':'校准微笑 ↗';
  $('home-instruction').innerHTML=mode==='hand'?'第一只手：拇指与食指捏合控制花开。<br>第二只手：张掌后左右挥动切花。':'自然表情含苞，笑得越开心，花开越盛。<br>一只手张掌后左右挥动切花。';
- $('instruction').textContent=mode==='hand'?'第一只手捏合控制花开。第二只手张掌，等绿色就绪提示后左右挥动切花。':'笑容控制花开。张开一只手掌，等绿色就绪提示后左右挥动切花。';
- $('calibration-help').textContent=mode==='hand'?'先捏合拇指与食指，点击「设为合拢」；再分开两指，点击「设为盛开」。':'先保持自然表情，点击「设为合拢」；再露出大大的笑容，点击「设为盛开」。';
  if(active){busy=true;updateModeBusy();syncHomeStatus();status('正在准备'+(mode==='hand'?'手势':'笑容')+'识别…');try{await modelForMode();}catch(e){stopCamera();status('识别模型加载失败，请重新开启摄像头。');console.error(e);}finally{busy=false;updateModeBusy();}}
 }
-$('hand').onclick=$('home-hand').onclick=()=>setMode('hand');$('smile').onclick=$('home-smile').onclick=()=>setMode('smile');
+$('home-hand').onclick=()=>setMode('hand');$('home-smile').onclick=()=>setMode('smile');
 function stopCamera(){
  active=false;resetHandRoles();$('reset-hand-roles').disabled=true;stream?.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;raw=null;
- $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').innerHTML='摄像头设置 <span>↗</span>';$('resume').hidden=true;manual=false;
+ $('camera-placeholder').hidden=false;$('camera-tag').textContent='摄像头未开启';$('start').innerHTML='摄像头设置 <span>↗</span>';manual=false;
 }
 const consent=$('camera-consent');
 const consentMessage='用手势或笑容让花绽放。画面仅在当前浏览器处理，不上传、不录制，也不使用麦克风。';
@@ -245,18 +237,9 @@ $('camera-allow').onclick=()=>startCamera();
 $('camera-later').onclick=()=>{if(!starting){consent.close();syncHomeStatus();}};
 $('home-camera').onclick=()=>showCameraConsent();
 consent.addEventListener('cancel',event=>{if(starting)event.preventDefault();});
-$('openness').oninput=e=>{resumeInteraction();manual=true;clearTracking();swipe.reset();showSwipeGuide({state:active?'paused':'off',progress:0});target=Number(e.target.value)/100;raw=null;$('resume').hidden=!active;status(active?'正在手动预览 · 点击「恢复摄像头控制」继续互动。':'正在手动预览 · 可点击花种切换，或开启摄像头互动。');};
-$('resume').onclick=()=>{resumeInteraction();manual=false;raw=null;lastSeen=0;swipe.reset();showSwipeGuide({state:'waiting',progress:0});$('resume').hidden=true;status('已恢复摄像头控制。');};
-for(const [id,index] of [['closed',0],['opened',1]])$(id).onclick=()=>{
- if(!active||manual||raw===null||performance.now()-lastSeen>500){status('请先开启摄像头、恢复识别，并保持'+(mode==='hand'?'手掌':'面部')+'在画面内。');return;}
- const next=[...ranges[mode]];next[index]=raw;
- if(next[1]-next[0]<.05){status('两个状态太接近。请先重置，再分别保持合拢和盛开动作进行校准。');return;}
- ranges[mode]=next;status(index===0?'已记录合拢状态，再做盛开动作并点击「设为盛开」。':'已记录盛开状态，试试现在的开花效果。');
-};
-$('reset').onclick=()=>{ranges[mode]=[...defaults[mode]];status('当前模式已恢复默认灵敏度。');};
 $('home-play').onclick=async()=>{
  if(playback){resumeInteraction();showSwipeGuide({state:active?(mode==='hand'?'first':'waiting'):'off',progress:0});return;}
- manual=false;$('resume').hidden=true;swipe.reset();current=0;target=0;const session=playback={finished:false};
+ manual=false;swipe.reset();current=0;target=0;const session=playback={finished:false};
  $('home-play').textContent='恢复互动 ↗';syncHomeStatus();
  try{await sequence.play();}catch(error){if(playback!==session||error.name==='AbortError')return;resumeInteraction();status(error.message);setText('home-swipe-title',error.message);}
 };
@@ -281,8 +264,8 @@ $('calibration-close').onclick=()=>$('calibration-dialog').close();
 resetHandRoles();
 window.addEventListener('pagehide',stopCamera);
 
-// New visits and refreshes open on the uncluttered garden screen.
-if(!location.hash){history.scrollRestoration='manual';requestAnimationFrame(()=>window.scrollTo(0,0));}
+// Old controls links return to the only screen.
+if(location.hash==='#controls')history.replaceState(null,'','#bloom');
 
 // Public model downloads need no camera access: warm them while the visitor reads.
 modelForMode().catch(()=>{});

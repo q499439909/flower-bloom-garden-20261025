@@ -206,3 +206,53 @@ main{display:block;max-width:none;padding:0;margin:0}
 /* The tiny inline poster paints before scripts or video resources finish. */
 .garden .flower-preview{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(var(--preview-scale,1.152));pointer-events:none}
 .flower-preview[hidden]{display:none}
+
+/* One garden screen, with the live recognition preview below the letter. */
+html{scroll-snap-type:none}
+.garden{grid-template-rows:minmax(0,1fr) auto;min-height:600px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.hero-scene{min-height:0}
+.letter-column{grid-column:3;grid-row:1;align-self:center;display:flex;flex-direction:column;gap:24px;min-width:0;max-height:100%}
+.letter-column .flower-letter{align-self:stretch}
+.letter-column .flower-letter h2{margin-bottom:18px}
+.letter-column .letter-keywords{margin-top:18px}
+.letter-column>.camera-controls{width:min(100%,270px);align-self:flex-end;flex-shrink:0;order:0}
+.camera-controls .camera{width:100%;aspect-ratio:4/3;border-color:#3a4033}
+.camera-controls #start{margin-top:7px;padding:7px 2px;background:transparent;color:#98a28b;border-radius:0;font-size:11px;letter-spacing:0}
+.camera-controls .camera-hud{inset:7px;gap:6px}
+.camera-controls .hand-roles{flex-direction:column;gap:3px;align-items:flex-start}
+.camera-controls .hand-roles span{font-size:8px;padding:2px 6px}
+.camera-controls .camera-topline{align-items:flex-start}
+.camera-controls #reset-hand-roles{width:23px;height:23px;font-size:15px}
+.camera-controls #swipe-guide{padding:6px 8px}
+.camera-controls .swipe-heading strong{font-size:10px}
+.camera-controls #swipe-help{display:none}
+.camera-controls #swipe-progress{height:2px;margin-top:4px}
+.camera-controls #camera-placeholder{padding:46px 8px 35px}
+.camera-controls #camera-placeholder>span{font-size:17px}
+.camera-controls #camera-placeholder p{font-size:10px;margin:5px 0}
+.camera-controls #camera-placeholder small{display:none}
+.camera-controls #status{inset:auto 7px 43px;font-size:10px;padding:6px 8px}
+.flower-footer{padding-top:14px}
+@media(min-width:541px) and (max-height:760px){
+ .letter-column{gap:14px}.letter-column>.camera-controls{width:min(100%,210px)}
+ .letter-column .letter-blessing{line-height:1.9}.letter-column .letter-keywords{margin-top:12px}
+ .garden-heading #home-instruction{margin-bottom:14px}.home-modes{margin-top:16px}.home-actions{margin-top:13px}
+}
+@media(max-width:540px){
+ .garden{height:100svh;min-height:650px;padding:18px 16px 12px}
+ .hero-scene{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:10px 14px}
+ .letter-column{grid-column:2;grid-row:1;gap:14px;align-self:center}
+ .letter-column .flower-letter h2{font-size:22px;margin-bottom:13px}
+ .letter-column .letter-blessing{font-size:11px;line-height:1.85}
+ .letter-column .letter-english{font-size:10px;margin-bottom:9px}
+ .letter-column .letter-keywords{font-size:9px;margin-top:12px;letter-spacing:0}
+ .letter-column>.camera-controls{width:100%}.camera-controls #start{font-size:10px;padding:4px 0;margin-top:4px}
+ .camera-controls .hand-roles{display:none}.camera-controls .camera-topline{justify-content:flex-end}
+ .camera-controls #swipe-guide{padding:4px 6px}.camera-controls .swipe-heading strong{font-size:9px}
+ .camera-controls #camera-placeholder{padding:22px 5px 25px}.camera-controls #camera-placeholder p{font-size:9px}
+ .garden-heading{padding:10px 0 14px;gap:0 12px}
+ .garden-heading h1{font-size:21px;margin-bottom:6px}.garden-heading>p{font-size:11px;line-height:1.7}
+ .garden-heading #home-instruction{font-size:10px;line-height:1.7;margin-top:7px}
+ .home-recognition,.home-recognition p{font-size:10px;line-height:1.7}.home-recognition p{margin:4px 0}
+ .home-actions{margin-top:9px}.home-actions button{font-size:11px}.home-modes button{font-size:11px}
+}
