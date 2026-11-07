@@ -362,3 +362,6 @@ html{scroll-snap-type:none}
 }
 
 @media(max-width:540px){.bloom-meter-number small{font-size:12px}}
+
+/* The loading cue belongs to the flower, independently of the progress meter. */
+#loading{left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;width:max-content;max-width:calc(100% - 24px);text-align:center;line-height:1.7;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,.65);pointer-events:none}

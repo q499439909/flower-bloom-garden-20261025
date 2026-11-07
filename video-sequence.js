@@ -7,16 +7,17 @@ export function createVideoSequence({url,count,fps=30,createVideo=()=>document.c
  video.addEventListener('waiting',()=>{waiting=true;});video.addEventListener('playing',()=>{waiting=false;});
  video.addEventListener('error',()=>{failure=new Error('花开资源加载失败，请检查网络后刷新重试。');onError(failure);});
  video.src=url;mount(video);video.load();
- function waitFor(type,ready,epoch){
+ function waitFor(type,ready,epoch,timeoutMs=60000){
   if(failure)return Promise.reject(failure);if(ready())return Promise.resolve();
   return new Promise((resolve,reject)=>{
    const finish=error=>{clearTimeout(timer);video.removeEventListener(type,done);video.removeEventListener('error',failed);error?reject(error):resolve();};
    const done=()=>finish(epoch!==generation?new DOMException('播放已取消','AbortError'):null),failed=()=>finish(failure||new Error('花开资源加载失败。'));
-   const timer=setTimeout(()=>finish(new Error('花开资源加载超时，请检查网络后重试。')),60000);
+   const timer=setTimeout(()=>finish(new Error('花开资源加载超时，请检查网络后重试。')),timeoutMs);
    video.addEventListener(type,done);video.addEventListener('error',failed);
   });
  }
  return {
+  ready({timeoutMs=2500}={}){return waitFor('loadeddata',()=>video.readyState>=2,generation,timeoutMs);},
   get frame(){return video.readyState>=2&&!video.seeking?{source:video,index:frameIndexAt(video.currentTime,count,fps)}:null;},
   get position(){return frameIndexAt(video.currentTime,count,fps)/(count-1);},
   get ended(){return video.ended;},get buffering(){return waiting||video.readyState<3;},

@@ -1,6 +1,6 @@
 import {launchCamera} from './camera-launch.js';
 import {createVisionClient} from './vision-client.js?v=delivery1';
-import {createVideoSequence} from './video-sequence.js';
+import {createVideoSequence} from './video-sequence.js?v=fast2';
 import {createBloomExperience} from './bloom-experience.js?v=feedback2';
 import {bloomGlowEffect,bloomProgressFeedback} from './bloom-feedback.js?v=feedback2';
 import {pinchRatio,drawTracking} from './tracking.js';
@@ -10,9 +10,9 @@ const $=id=>document.getElementById(id);
 const canvas=$('flower'),ctx=canvas.getContext('2d'),video=$('video'),overlay=$('tracking');
 const clamp=v=>Math.max(0,Math.min(1,v));
 const flowers=[
- {name:'锦绣年华',latin:'Blooming Splendor',blessing:['一朵牡丹，盛开满怀锦绣，','一程岁月，珍藏所有温柔。','愿你所行皆坦途，所遇皆美好，','岁岁欢喜，年年花开。'],keywords:'圆满 · 繁盛',poster:'assets/posters/peony.jpg',video:'assets/video/peony-web.mp4',displayScale:1.44,path:'peony-full-display',accent:'#e4b4bd',count:169,digits:4,width:1112,height:834},
- {name:'暖阳予你',latin:'A Little Sunshine',blessing:['采一束阳光，藏进金色花瓣，','把温暖与欢喜，轻轻送到你身旁。','愿你眼里常有光，心中常有暖，','一路明媚，自在芬芳。'],keywords:'温暖 · 陪伴',poster:'assets/posters/rose.jpg',video:'assets/video/rose-web.mp4',displayScale:1.44,path:'rose-full-display',accent:'#e9cb79',count:169,digits:5,width:1112,height:834},
- {name:'春日来信',latin:'Letters from Spring',blessing:['春风寄来一封信，','写满温柔与新生。','愿所有美好如约而至，','所有期待次第花开。'],keywords:'希望 · 新启',poster:'assets/posters/spring-letter.jpg',video:'assets/video/spring-letter-web.mp4',displayScale:1,path:'spring-letter-display',accent:'#c7bcdf',count:95,digits:5,width:834,height:1112}
+ {name:'锦绣年华',latin:'Blooming Splendor',blessing:['一朵牡丹，盛开满怀锦绣，','一程岁月，珍藏所有温柔。','愿你所行皆坦途，所遇皆美好，','岁岁欢喜，年年花开。'],keywords:'圆满 · 繁盛',poster:'assets/posters/peony.jpg',video:'assets/video/peony-web.mp4?v=fast2',displayScale:1.44,path:'peony-full-display',accent:'#e4b4bd',count:169,digits:4,width:1112,height:834},
+ {name:'暖阳予你',latin:'A Little Sunshine',blessing:['采一束阳光，藏进金色花瓣，','把温暖与欢喜，轻轻送到你身旁。','愿你眼里常有光，心中常有暖，','一路明媚，自在芬芳。'],keywords:'温暖 · 陪伴',poster:'assets/posters/rose.jpg',video:'assets/video/rose-web.mp4?v=fast2',displayScale:1.44,path:'rose-full-display',accent:'#e9cb79',count:169,digits:5,width:1112,height:834},
+ {name:'春日来信',latin:'Letters from Spring',blessing:['春风寄来一封信，','写满温柔与新生。','愿所有美好如约而至，','所有期待次第花开。'],keywords:'希望 · 新启',poster:'assets/posters/spring-letter.jpg',video:'assets/video/spring-letter-web.mp4?v=fast2',displayScale:1,path:'spring-letter-display',accent:'#c7bcdf',count:95,digits:5,width:834,height:1112}
 ];
 let selected=0,target=0,current=0,shown=-1,mode='smile';
 let stream=null,active=false,starting=false,manual=false,raw=null,lastSeen=0;
@@ -90,14 +90,17 @@ function revealBlessing(){
   glowAnimation?.cancel();glowAnimation=$('bloom-glow').animate(keyframes,options);
  }
 }
+function sequenceFor(index){
+ if(!sequences.has(index)){const f=flowers[index];sequences.set(index,createVideoSequence({url:f.video,count:f.count,onError:error=>status(error.message)}));}
+ return sequences.get(index);
+}
 function selectFlower(index){
  const next=(index+flowers.length)%flowers.length;if(next===selected&&shown!==-1)return;
  const changingFlower=sequence!==null;
  if(shown!==-1)snapshotFlower();
  sequence?.pause();if(playback)resumeInteraction();selected=next;shown=-1;
  const f=flowers[selected];
- if(!sequences.has(selected))sequences.set(selected,createVideoSequence({url:f.video,count:f.count,onError:error=>status(error.message)}));
- sequence=sequences.get(selected);
+ sequence=sequenceFor(selected);
  resetBloomRound(changingFlower);current=target=0;sequence.seek(0);
  canvas.width=f.width;canvas.height=Math.ceil(f.height*Math.max(1,.8*f.displayScale));
  preview.hidden=false;preview.style.setProperty('--preview-scale',String(.8*f.displayScale));
@@ -106,7 +109,7 @@ function selectFlower(index){
   if(selected!==posterFlower||shown!==-1)return;
   const scale=.8*f.displayScale,width=f.width*scale,height=f.height*scale;
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(preview,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
-  shown=-2;preview.hidden=true;$('loading').hidden=true;
+  shown=-2;preview.hidden=true;
   canvas.dataset.firstPaintMs||=String(Math.round(performance.now()));
   if(transitionPending){transitionPending=false;transitionStarted=performance.now();}
  };
@@ -122,6 +125,7 @@ function selectFlower(index){
 flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
+const firstFlowerReady=sequence.ready().catch(()=>{});
 let lastMeterState='';
 function updateBloomMeter(phase){
  const {percent,note}=bloomProgressFeedback(shown,flowers[selected].count,phase),key=percent+':'+note;
@@ -147,7 +151,7 @@ function animate(now=performance.now()){
  }else{current+=(target-current)*.16;if(Math.abs(target-current)<.001)current=target;}
  const flower=flowers[selected],n=Math.round(clamp(current)*(flower.count-1));
  const frame=sequence.frame;
- $('loading').hidden=!!frame||shown===-2||!transitionCanvas.hidden;
+ $('loading').hidden=!!frame||shown>=0;
  if(frame&&frame.index!==shown){
   if(transitionPending){transitionPending=false;transitionStarted=now;}
   shown=frame.index;canvas.dataset.frameIndex=String(shown);preview.hidden=true;canvas.dataset.firstPaintMs||=String(Math.round(performance.now()));const scale=.8*flower.displayScale,width=flower.width*scale,height=flower.height*scale;
@@ -163,6 +167,7 @@ function animate(now=performance.now()){
  requestAnimationFrame(animate);
 }animate();
 async function modelForMode(){
+ await firstFlowerReady;
  if(!visionClient)visionClient=createVisionClient({onProgress:message=>{lastModelStage=message;if(starting||busy){setPreviewCue(message,'loading');if(starting)$('camera-allow').textContent=message;}}});
  await visionClient.request('init',{mode});
 }
@@ -345,8 +350,12 @@ window.addEventListener('pagehide',stopCamera);
 // Old controls links return to the only screen.
 if(location.hash==='#controls')history.replaceState(null,'','#bloom');
 
-// Public model downloads need no camera access: warm them while the visitor reads.
-modelForMode().catch(()=>{});
+// Give the first flower a head start before downloading the recognition engine.
+// Once that is ready, warm the other small videos for later flower switches.
+modelForMode().then(()=>{
+ const warm=()=>flowers.forEach((_,index)=>sequenceFor(index));
+ if('requestIdleCallback' in window)requestIdleCallback(warm,{timeout:1500});else setTimeout(warm,250);
+}).catch(()=>{});
 
 // Existing browser consent starts the camera immediately; otherwise ask on screen one.
 launchCamera({
