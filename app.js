@@ -2,7 +2,7 @@ import {launchCamera} from './camera-launch.js';
 import {createVisionClient} from './vision-client.js?v=delivery1';
 import {createVideoSequence} from './video-sequence.js';
 import {createBloomExperience} from './bloom-experience.js?v=feedback2';
-import {bloomGlowEffect,bloomProgressFeedback} from './bloom-feedback.js?v=feedback2';
+import {bloomGlowEffect,bloomProgressFeedback,createProgressDisplay} from './bloom-feedback.js?v=steady1';
 import {pinchRatio,drawTracking} from './tracking.js';
 import {createSwipeDetector,isOpenPalm} from './swipe.js';
 import {createHandRoleTracker} from './hand-roles.js?v=arrival2';
@@ -20,6 +20,7 @@ let lastVideo=-1,lastDetect=0,busy=false,visionClient=null,processingVision=fals
 const defaults={hand:[.08,1.2],smile:[.08,.65]},ranges={hand:[...defaults.hand],smile:[...defaults.smile]};
 const swipe=createSwipeDetector(),handRoles=createHandRoleTracker(),experience=createBloomExperience();
 let glowAnimation=null;
+const progressDisplay=createProgressDisplay();
 const sequences=new Map();let sequence=null,lastModelStage='';
 const preview=$('flower-preview'),inlinePeonyPreview=preview.src;
 const transitionCanvas=$('flower-transition'),transitionCtx=transitionCanvas.getContext('2d');
@@ -75,7 +76,7 @@ function syncHomeStatus(){
 
 function status(text){const notice=$('status');notice.textContent=text;notice.hidden=!/失败|无法启动|未找到摄像头|请在浏览器|请先开启|识别暂时|已记录|两个状态|已恢复默认|分工已重置/.test(text);if(!notice.hidden)setPreviewCue(text,'error');}
 function resetBloomRound(requireNeutral=false){
- experience.reset({requireNeutral});glowAnimation?.cancel();
+ experience.reset({requireNeutral});progressDisplay.reset();glowAnimation?.cancel();
  $('flower-letter').dataset.revealed='false';
  $('flower-letter').querySelectorAll('.letter-wish,.letter-keywords').forEach(node=>node.setAttribute('aria-hidden','true'));
  $('bloom-announcement').textContent='';
@@ -123,8 +124,9 @@ flowers.forEach((_,i)=>{$('flower-'+i).onclick=()=>selectFlower(i);});
 $('previous-flower').onclick=()=>selectFlower(selected-1);$('next-flower').onclick=()=>selectFlower(selected+1);
 selectFlower(0);
 let lastMeterState='';
-function updateBloomMeter(phase){
- const {percent,note}=bloomProgressFeedback(shown,flowers[selected].count,phase),key=percent+':'+note;
+function updateBloomMeter(phase,now){
+ const feedback=bloomProgressFeedback(shown,flowers[selected].count,phase);
+ const percent=progressDisplay.update(feedback.percent,now),note=feedback.note,key=percent+':'+note;
  if(key===lastMeterState)return;lastMeterState=key;
  $('bloom-percent').textContent=String(percent);$('bloom-progress-note').textContent=note;
  $('bloom-meter').setAttribute('aria-valuenow',String(percent));
@@ -159,7 +161,7 @@ function animate(now=performance.now()){
   transitionOpacity=1-progress*progress*(3-2*progress);transitionCanvas.style.opacity=String(transitionOpacity);
   if(progress===1){transitionCanvas.hidden=true;transitionStarted=null;}
  }
- updateBloomMeter(state.phase);
+ updateBloomMeter(state.phase,now);
  requestAnimationFrame(animate);
 }animate();
 async function modelForMode(){

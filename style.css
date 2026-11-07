@@ -358,3 +358,7 @@ html{scroll-snap-type:none}
  .bloom-meter-rule{max-width:30px}#bloom-progress-note{font-size:9px;letter-spacing:.5px;margin-top:6px}
  .bloom-glow{filter:blur(12px)}
 }
+
+/* Reserve three digit slots so the number, percent sign, and rules stay still. */
+.bloom-meter-number{width:4.1em;flex:0 0 4.1em;justify-content:center}
+#bloom-percent{display:inline-block;width:3ch;text-align:right;font-variant-numeric:tabular-nums}
