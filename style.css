@@ -306,3 +306,11 @@ html{scroll-snap-type:none}
  .garden-heading .home-actions{flex-direction:row;justify-content:center;align-items:center;align-content:normal;gap:18px;margin:12px 0 0}
  .garden #home-camera{align-self:center;margin-top:10px}
 }
+
+/* Small optical offsets keep the controls and mobile title balanced. */
+@media(min-width:541px){
+ .garden-heading .home-modes,.garden-heading #home-instruction,.garden-heading .home-actions{transform:translateY(-12px)}
+}
+@media(max-width:540px){
+ .garden-heading h1{transform:translateX(8px)}
+}
