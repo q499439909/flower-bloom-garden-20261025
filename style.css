@@ -345,8 +345,9 @@ html{scroll-snap-type:none}
 .bloom-glow{z-index:2}
 .bloom-meter{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:min(100%,230px);text-align:center;z-index:3;pointer-events:none}
 .bloom-meter-line{display:flex;align-items:center;justify-content:center;gap:16px}
-.bloom-meter-number{display:flex;align-items:baseline;gap:4px;color:#dddcd0;font-family:Georgia,'Songti SC',serif;font-size:30px;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:1px}
-.bloom-meter-number small{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:#969b8d;letter-spacing:0}
+.bloom-meter-number{display:flex;align-items:center;justify-content:center;flex:0 0 4em;height:1.2em;gap:4px;color:#dddcd0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:400;line-height:1.2;font-variant-numeric:lining-nums tabular-nums;letter-spacing:1px}
+#bloom-percent{display:block;width:3ch;height:1.2em;line-height:1.2;text-align:right}
+.bloom-meter-number small{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;line-height:1;color:#969b8d;letter-spacing:0;transform:translateY(.35em)}
 .bloom-meter-rule{height:1px;flex:1;max-width:48px;background:linear-gradient(to right,transparent,var(--flower-accent));opacity:calc(.22 + var(--bloom-progress,0)*.4)}
 .bloom-meter-rule:last-child{transform:scaleX(-1)}
 #bloom-progress-note{font-size:10px;line-height:1.6;letter-spacing:1.2px;color:#7e8876;margin:8px 0 0}
