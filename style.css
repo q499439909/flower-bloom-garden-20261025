@@ -314,3 +314,9 @@ html{scroll-snap-type:none}
 @media(max-width:540px){
  .garden-heading h1{transform:translateX(8px)}
 }
+
+/* A single cue at the top leaves the camera image unobstructed. */
+.camera-controls .hand-roles{display:none}
+.camera-controls .camera-hud{flex-direction:row;align-items:flex-start;justify-content:flex-start}
+.camera-controls .camera-topline{display:contents}
+.camera-controls #swipe-guide{order:-1;flex:1;min-width:0}
